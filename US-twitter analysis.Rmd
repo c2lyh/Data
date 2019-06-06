@@ -1,0 +1,361 @@
+---
+title: "US-twitter data analysis"
+author: yuheng li
+word_document: default
+pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## A
+
+The overall this project/program is trying to answer the question__Why is there so much negativity on Facebook comments about politics?__
+
+a dataset that contains public Facebook data that corresponds to all the posts by Members of the U.S. Congress between January 1st, 2015 and December 31st, 2016, as well as all the comments and reactions to these posts.
+
+Databases Structure:
+
+Table 1: information of the Members of Congress.
+
+Table 2: information of posts.
+
+Table 3: information of comments
+
+```{r}
+
+
+```
+
+Data clean:
+
+```{r }
+library(data.table)
+library(plyr)
+library(dplyr)
+
+#table 1
+table1 <- congress <- fread("./data/congress-list.csv")
+table1 <- fread("./data/congress-list.csv",stringsAsFactors = T)
+#table 2
+id <- tools::file_path_sans_ext(list.files("./data/facebook-114-posts/"))
+id <- id[-which(id=="CongressmanCulberson")]
+id <- id[-which(id=="CongressmanJimBridenstine")]
+id <- id[-which(id=="RepCarolynMaloney")]
+id <- id[-which(id=="RepChrisCollins")]
+
+id <- id[-which(id=="HurdOnTheHill")]
+id <- id[-which(id=="RepRobBishop")]
+
+post <- list()
+
+for(k in 1:length(id)){
+  x <- id[k]
+  post.path <- paste("./data/facebook-114-posts/", x, ".csv", sep="")
+post.react.path <- paste("./data/facebook-114-reactions-totals/", x, "_reactions.csv", sep="")
+post11 <- fread(post.path,
+                colClasses = c("character", "character", "NULL", "character", "NULL","NULL", "character", "NULL", rep("integer",3)),
+                select = c(1,2,4,7,9,10,11))
+post11[ ,c( "likes_count2", "love_count",  "haha_count",  "wow_count",   "sad_count",   "angry_count")] <- 0
+post11[ ,c( "likes_count2", "love_count",  "haha_count",  "wow_count",   "sad_count",   "angry_count")] <- NA
+
+names(post11) <- c("member.id", "name", "created.time", "post.id", "likes_count0", "comments_count", "shares_count", 
+                   "likes_count", "love_count",  "haha_count",  "wow_count",   "sad_count",   "angry_count")
+
+react1 <- read.csv(post.react.path, stringsAsFactors = F)
+for(i in 1:nrow(post11)){
+  if(length(which(react1$id==post11$post.id[i])) != 0){
+    post11[i,8:13] <- as.vector(react1[which(react1$id==post11$post.id[i]),2:7])
+    }
+}
+post[[k]] <- post11
+}
+
+table2 <- rbind.fill(post)
+
+# table 3
+id <- tools::file_path_sans_ext(list.files("./data/facebook-114-comments/"))
+
+# comment11 <- fread("./data/facebook-114-comments/7259193379_comments.csv",
+#                    colClasses = c("NULL", "NULL", "NULL", "character", "integer","integer", "character", "character", rep("NULL",2)),
+#                    select = c(4:8))
+# comment11[,c("neg_sentiment",	"neu_sentiment",	"pos_sentiment")] <- 0
+# comment11[,c("neg_sentiment",	"neu_sentiment",	"pos_sentiment")] <- NA
+# names(comment11) <- c("comment.time", "comment.likes", "comments.count", 
+#                       "comment.id", "post.id", "neg_sentiment", "neu_sentiment", "pos_sentiment" )
+# 
+# sent <- read.csv("./data/facebook-114-comments-sentiment/7259193379_comments.csv")
+# for(i in 1:nrow(comment11)){
+#   if(length(which(sent$id==comment11$comment.id[i])) != 0){
+#     comment11[i,6:8] <- as.vector(sent[which(sent$id==comment11$comment.id[i]),2:4])
+#     }
+# }
+comment <- list()
+for(k in 1:length(id)){
+  x <- id[k]
+  comment.path <- paste("./data/facebook-114-comments/", x, ".csv", sep="")
+sent.react.path <- paste("./data/facebook-114-comments-sentiment/", x, ".csv", sep="")
+comment11 <- fread(comment.path,
+                   colClasses = c("NULL", "NULL", "NULL", "character", "integer","integer", "character", "character", rep("NULL",2)),
+                   select = c(4:8))
+names(comment11) <- c("comment.time", "comment.likes", "comments.count",
+                      "comment.id", "post.id")
+#comment11[,c("neg_sentiment",	"neu_sentiment",	"pos_sentiment")] <- 0
+#comment11[,c("neg_sentiment",	"neu_sentiment",	"pos_sentiment")] <- NA
+#names(comment11) <- c("comment.time", "comment.likes", "comments.count",
+#                      "comment.id", "post.id", "neg_sentiment", "neu_sentiment", "pos_sentiment" )
+
+sent <- read.csv(sent.react.path,stringsAsFactors = F)
+names(sent) <- c("comment.id","neg_sentiment", "neu_sentiment", "pos_sentiment")
+comment[[k]] <- merge(comment11, sent, by = "comment.id",
+      all= T)
+
+}
+
+
+table3 <- rbind.fill(comment)
+```
+
+Basic statistics of databases
+
+table 1: 532   $times$  8
+table 1: 436168   $times$  13
+table 1: 10603905   $times$  8.
+
+```{r}
+dim(table1)
+dim(table2)
+dim(table3)
+
+
+table1$nominate_dim1 <- as.factor(table1$nominate_dim1)
+table1$district_code <- as.factor(table1$district_code)
+summary(table1)
+
+summary(table2)
+
+summary(table3)
+```
+
+
+## B
+
+
+how much negativity is there on the comments of pages by U.S. legislators? In other words, what proportion of comments are negative?
+
+predict a category based on which probability is highest
+```{r }
+sum(table3$neg_sentiment==1,na.rm = T)/length(na.omit(table3$neg_sentiment))
+```
+
+The proportion of comments are negative is 18.9\%.
+
+How much variation is there in the level of negativity that legislators see on their Facebook pages? 
+Which are the legislators with the highest and lowest proportion of negative comments?
+
+```{r}
+member <- unique(table2$member.id)
+porp.neg <- NULL
+for(i in 1:length(member)){
+posts.temp <- unique(table2[table2$member.id==member[i],4])
+comment.temp <- table3[table3$post.id%in%posts.temp,]
+porp.neg[i] <- sum(comment.temp$neg_sentiment==1,na.rm = T)/length(na.omit(comment.temp$neg_sentiment))
+}
+
+
+max(porp.neg,na.rm = T)
+min(porp.neg,na.rm = T)
+member[which.max(porp.neg)]
+member[which.min(porp.neg)]
+
+table2[table2$member.id==member[which.max(porp.neg)],]
+table2[table2$member.id==member[which.min(porp.neg)],]
+```
+
+max: Senator Kelly Ayotte, 42.84\%
+min: Gregorio Kilili Camacho Sablan, 1.01\%
+
+how did negativity evolve over time during the period of analysis? Do you identify any particular days or periods during which negativity spiked? Can you explain why?
+
+```{r}
+
+date <- strsplit(table3$comment.time,"T")
+date <- lapply(date, function(x){x[1]})
+date <- unlist(date)
+table3.time <- table3[order(as.Date(date, format="%Y-%m-%d")),]
+
+rle.ind <- rle(substr(table3.time$comment.time, 1, 7))$lengths
+rle.ind <- cumsum(c(1,rle.ind))
+prop.neg <- NULL
+for(i in 1:(length(rle.ind)-1)){
+prop.neg[i] <- sum(table3.time$neg_sentiment[rle.ind[i]:(rle.ind[i+1]-1)]==1,na.rm = T)/length(na.omit(table3.time$neg_sentiment[rle.ind[i]:(rle.ind[i+1]-1)]))
+}
+
+plot(prop.neg[-1],type = "l",xaxt="n",xlab="Time", ylab = "Negative rate")
+axis(1, at=1:71,labels = unique(substr(table3.time$comment.time, 1, 7))[-1],las=2,cex.axis=0.5)
+```
+
+The negative rate hits the maximum at the beginning of the 113th United States Congress.
+
+Are there any other variables in the dataset that could help you measure negativity?
+
+The ratio of sad or angry counts on like counts for each post could help measure the negativity.
+
+```{r}
+member <- unique(table2$member.id)
+sad <- angry <- NULL
+
+for(i in 1:length(member)){
+posts.temp <- unique(table2[table2$member.id==member[i],4])
+comment.temp <- table2[table2$post.id%in%posts.temp,]
+sad[i] <- sum(comment.temp$sad_count,na.rm = T)/sum(comment.temp$likes_count,na.rm = T)
+angry[i] <- sum(comment.temp$angry_count,na.rm = T)/sum(comment.temp$likes_count,na.rm = T)
+}
+
+
+max(sad,na.rm = T)
+max(angry,na.rm = T)
+member[which.max(sad)]
+member[which.max(angry)]
+
+table2[table2$member.id==member[which.max(sad)],]
+table2[table2$member.id==member[which.max(angry)],]
+
+porp.neg[which(member == "95696782238")]
+```
+
+Congressman Alcee L. Hastings, whose negativity is 13.32\%, reveives the largest ratios of sad and angry counts on the like counts.
+
+What proportion of comment threads have at least one negative comment?
+
+```{r}
+sum(table3$neg_sentiment>0,na.rm = T)/length(na.omit(table3$neg_sentiment))
+```
+
+73.38\% of comment threads have at least one negative comment.
+
+## C
+
+The website [EveryPolitician](https://everypolitician.org/) contains information on legislators around the world. https://everypolitician.org/united-states-of-america/house/term-table/114.html and https://everypolitician.org/united-states-of-america/senate/term-table/114.html
+
+
+
+```{r}
+library('rvest')
+
+
+webpage <- read_html("https://everypolitician.org/united-states-of-america/senate/term-table/114.html")
+
+web.info <- sapply(strsplit(html_text(webpage),"\n"), function(x){
+  gsub("[[:space:]]", "", x)
+})
+
+web.info <- web.info[!web.info==""]
+web.info <- web.info[-c(1:79)]
+name <- web.info[which(web.info=="Gender")-2]
+bioguide <- web.info[which(web.info=="bioguide")+1]
+birth  <- web.info[which(web.info=="Born")+1]
+
+birth <- as.Date(birth)
+ages <- 2019-year(birth)
+table4 <- cbind(bioguide,ages)
+
+```
+
+more negative comments
+
+```{r}
+name.temp <- congress[congress$bioguide_id %in% bioguide,5]
+name.temp <- name.temp[-c(10,50,71,81,84)] #senatorbennet, SenatorKirk,SenatorGaryPeters,chuckschumer,jeffsessions
+name.temp=="jeffsessions"
+neg.rate <- NULL
+
+for (i in 1:100){
+  if(!is.na(name.temp[i])){
+    temp <- read.csv(paste("./data/facebook-114-comments-sentiment/", name.temp[i], "_comments.csv",sep = ""))
+    neg.rate[i] <- sum(temp[,2]==1,na.rm = T)/length(na.omit(temp[,2]))
+  }
+}
+
+lm.age <- ages[-c(10,50,71,81,84)]
+lm.neg <- neg.rate
+
+ind <- !is.na(neg.rate)
+lm.age <- lm.age[ind]
+lm.neg <- lm.neg[ind]
+
+fit1 <- lm(lm.neg~lm.age)
+summary(fit1)
+
+plot(lm.age,lm.neg)
+abline(fit1)
+```
+
+According to the hypothesis test for the coefficient of a linear model, and the graphical method, there are NO more negative comments on the pages of younger politicians.
+
+
+analysis relationship of two variables
+
+```{r}
+gender.temp <- (congress[congress$bioguide_id %in% bioguide,2])
+gender.temp <- gender.temp[-c(10,50,71,81,84)] #senatorbennet, SenatorKirk,SenatorGaryPeters,chuckschumer,jeffsessions
+
+party.temp <- (congress[congress$bioguide_id %in% bioguide,4])
+party.temp <- party.temp[-c(10,50,71,81,84)] #senatorbennet, SenatorKirk,SenatorGaryPeters,chuckschumer,jeffsessions
+
+
+gender.temp <- gender.temp[ind]
+party.temp <- party.temp[ind]
+
+gender.temp <- as.numeric(gender.temp=="M")
+party.temp <- as.numeric(party.temp == "Republican")
+
+
+fit2 <- lm(lm.neg~gender.temp+party.temp)
+summary(fit2)
+
+
+```
+
+The party of sognificant for the negativity while the gender is not, statistcially speaking.
+
+## D
+
+Do negative comments receive more likes than neutral or positive comments? 
+```{r}
+df.temp <- na.omit(cbind(table3$comment.likes,table3$neg_sentiment))
+fit3 <- lm(df.temp[,1]~df.temp[,2])
+summary(fit3)
+
+t.test(table3$comment.likes[table3$neg_sentiment>0],table3$comment.likes[table3$neg_sentiment==0])
+```
+
+It is statistically significant that negative comments receive more likes than neutral or positive comments.
+
+same the analysis above, but this time separately for Republicans and Democrats. 
+
+```{r}
+Rep.ind <- read.csv("./RepublicansPost.csv",stringsAsFactors = F)[,2]
+Rep.ind <- table3$post.id%in%Rep.ind
+
+table3.rep <- table3[Rep.ind,]
+t.test(table3.rep$comment.likes[table3.rep$neg_sentiment>0],table3.rep$comment.likes[table3.rep$neg_sentiment==0])
+
+table3.demo <- table3[!Rep.ind,]
+t.test(table3.demo$comment.likes[table3.demo$neg_sentiment>0],table3.demo$comment.likes[table3.demo$neg_sentiment==0])
+```
+
+The same conclusion obtains by the separate test for Republicans and Democrats, respectively.
+
+
+Do negative comments receive more negative replies than positive comments? 
+
+```{r}
+#set 100 likes as the threshold
+t.test(table3[table3$comment.likes<=100,"neg_sentiment"],table3[table3$comment.likes<=100,"pos_sentiment"])
+```
+
+Yes, the negative comments receive more negative replies than positive comments.

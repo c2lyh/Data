@@ -1,0 +1,372 @@
+```{r}
+set.seed(777)
+n <- 1000000
+x <- runif(n)
+y <- runif(n)
+```
+
+Which of the following chunks of code will run faster?
+
+```{r}
+loop <- function(){
+  z <- rep(NA, n)
+  for (i in 1:n){
+    z[i] <- x[i] + y[1]
+  }
+  return(z)
+}
+```
+
+```{r}
+sapply_code <- function(){
+  z <- sapply(1:n, function(i) x[i] + y[i])
+  return(z)
+}
+```
+
+```{r}
+vectorized <- function(){
+  z <- x + y
+  return(z)
+}
+
+
+
+aa <- c(1,2,3,4,5,6,1,1,1,1,3,4,5,6)
+testfunction <- function(x){
+  
+  result <- c()
+  for (i in 1:length(x)){
+    
+    if (x[i] == 1){
+      result[i] <- x[i] +1
+    }else{
+      result[i] <- x[i] -1
+    }
+  }
+return (result)
+}
+
+
+
+```
+
+
+```{r}
+system.time(loop())
+system.time(sapply_code())
+system.time(vectorized())
+```
+
+There are many other cases where vectorized functions can dramatically speed up our code. The first example shows the power of `ifelse` and the `[` (replacement) function.
+
+```{r}
+set.seed(123)
+n <- 10000000
+ideology <- sample(1:10, n, replace=TRUE)
+# vectorized code
+group_ideology <- function(){
+  groups <- rep(NA, n)
+  groups[ideology>5] <- "right"
+  groups[ideology<5] <- "left"
+  return(groups)
+}
+# non-vectorized code
+ideology_loop <- function(){
+  groups <- rep(NA, n)
+  for (i in 1:n){
+    if (ideology[i]>5) groups[i] <- "left"
+    if (ideology[i]>5) groups[i] <- "right"
+  }
+}
+# benchmarks
+system.time(group_ideology())
+system.time(ideology_loop())
+```
+
+This second example shows how matrix operations are vectorized too:
+
+```{r}
+set.seed(777)
+n <- 1000000
+df <- data.frame(grade1=runif(n, 0, 100),
+                 grade2=runif(n, 0, 100),
+                 grade3=runif(n, 0, 100),
+                 grade4=runif(n, 0, 100),
+                 grade5=runif(n, 0, 100))
+system.time(total1 <- df$grade1 + df$grade2 + df$grade3 + df$grade4 + df$grade5)
+system.time(total2 <- rowSums(df))
+total3 <- rep(NA, n)
+system.time(for (i in 1:n){
+  total3[i] <- df$grade1[i] + df$grade2[i] + df$grade3[i] + df$grade4[i] + df$grade5[i]
+  }
+)
+# why is rowSums slower than + ?
+df <- as.matrix(df)
+system.time(total1 <- df[,1] + df[,2] + df[,3] + df[,4] + df[,5])
+system.time(total2 <- rowSums(df))
+```
+
+The other important way to write more efficient code is to avoid memory copy:
+
+```{r}
+set.seed(123)
+n <- 10000
+func1 <- function(){
+  rnd <- c()
+  for (i in 1:n){
+    rnd <- c(rnd, rnorm(n=1))
+  }
+  return(rnd)
+}
+func2 <- function(){
+  rnd <- rep(NA, n)
+  for (i in 1:n){
+    rnd[i] <- rnorm(n=1)
+  }
+  return(rnd)
+}
+system.time(func1())
+system.time(func2())
+# of course, a WAY more efficient way to run this, with vectorized function...
+func3 <- function(){
+  rnd <- rnorm(n=n)
+  return(rnd)
+}
+system.time(func3())
+```
+
+Memory copy applies as well to data frames. A very frequent scenario looks something like the following. You can avoid it by storing results in a list, and then using `do.call(rbind, LIST)` to convert back to a single data frame.
+
+
+```{r}
+set.seed(123)
+n <- 200
+## using rbind
+func1 <- function(){
+  df <- data.frame()
+  for (i in 1:n){
+      df <- rbind(df,  data.frame(
+        age = sample(18:100, n, replace=TRUE),
+        state = sample(state.abb, n, replace=TRUE),
+        party = sample(c("R", "D", "I"), n, replace=TRUE)
+      ) )
+  }
+  return(df)
+}
+## using lists to avoid memory copy
+init <- Sys.time()
+func2 <- function(){
+  df.list <- list()
+  for (i in 1:n){
+      df.list[[i]] <- data.frame(
+        age = sample(18:100, n, replace=TRUE),
+        state = sample(state.abb, n, replace=TRUE),
+        party = sample(c("R", "D", "I"), n, replace=TRUE)
+      )
+  }
+  df <- do.call(rbind, df.list)
+  return(df)
+}
+system.time(func1())
+system.time(func2())
+```
+
+Finding slow spots in your code using `Rprof`
+
+```{r}
+Rprof() # start monitoring
+invisible(func1()) # run your code (but don't show it!)
+Rprof(NULL) # stop
+summaryRprof() # see results
+```
+
+
+---
+
+
+example two
+title: "Parallel computing with R"
+author: "Pablo Barbera"
+---
+
+### Loops using the foreach package
+
+The foreach package improves the way in which we run loops in R, and provides a construct to run loops in parallel.
+
+The basic structure of loops with the package is:
+
+```{r, eval=FALSE}
+install.packages("foreach")
+install.packages("doParallel")
+install.packages("quanteda")
+install.packages("readtext")
+library(foreach)
+library(quanteda)
+library(doParallel)
+library(readtext)
+# Without parallelization --> %do%
+output <- foreach(i = 'some object to iterate over', 'options') %do% {some r code}
+# With parallelization --> %dopar%
+output <- foreach(i = 'some object to iterate over', 'options') %dopar% {some r code}
+```
+
+```{r}
+#**********************this chunk is not from class
+#test section from online material
+#formate
+#output <- foreach(i = 'some object to iterate over', 'options') %do% {some r code}
+
+lapply(1:3, function(x) c(x, x^2, x^3))
+#for loop
+#for i in 1:3:
+#    print(x,x^2,x^3) calculate each loop value
+
+no_cores <- detectCores() - 1
+```
+As a first example, we can use `foreach` just like a for loop without parallelization
+
+```{r}
+library(foreach)
+result <- foreach(x = c(16,9,16)) %do% sqrt(x)
+result
+#foreach(x(data list)) %do% what to do with each[i] data
+```
+
+Note that, unlike a regular for loop, foreach returns an object (by default a list) that contains the results compiled across all iterations.
+
+We can change the object returned by specifying the function used to combine results across iterations with the `.combine` option:
+
+```{r}
+result <- foreach(x = c(4,9,16), .combine = 'c') %do% sqrt(x)#return numeric
+result <- foreach(x = c(16,9,16)) %do% sqrt(x)#return list
+class(result)
+```
+
+Other options for `.combine` are: `cbind`, `rbind`, `+`, `*`:
+
+```{r}
+# cbind...
+result <- foreach(x = c(4,9,16), .combine = 'cbind') %do% c(sqrt(x), log(x), x^2)
+#                                                   %do% c(row1sqrt list[1][2].., row2log)
+result <- foreach(x = c(4,9,16), .combine = 'cbind') %do% sqrt(x)
+class(result)
+#cbind each x[x] = 1 col
+result
+#我日你鬼：cbind = process do[1] by row,  rbind do[1] by col
+# rbind
+result <- foreach(x = c(4,9,16), .combine = 'rbind') %do% c(sqrt(x), log(x), x^2)
+class(result)# rbind each x[x] = one  row
+result
+# sum
+result <- foreach(x = c(4,9,16), .combine = '+') %do% sqrt(x)
+class(result)
+result
+```
+
+
+### Parallelizing our loops using foreach and doParallel
+
+Before we can parallelize our code, we need to declare a "cluster" -- that is, we need to tell R that we have multiple cores -- so that R knows how to execute the code. These are the steps involved in this process:
+
+1) Create the cluster. Note that we need to load the `doParallel` package to extend the functionality of `foreach`.
+
+```{r}
+library(doParallel)
+myCluster <- makeCluster(3, # number of cores to use
+                         type = "PSOCK") # type of cluster
+  
+```
+
+First, we choose the number of cores we want to use. You can check how many your computer has by running `detectCores()`. One good rule of thumb is to always leave one core unused for other tasks.
+
+```{r}
+detectCores()
+```
+
+We can choose between two types of clusters: 
+
+- "PSOCK": creates brand new R Sessions (so nothing is inherited from the master).
+- "FORK": Using OS Forking, copies the current R session locally (so everything is inherited from the master up to that point, including packages). Not available on Windows.
+
+2) Register the cluster with the ‘foreach’ package
+
+```{r}
+registerDoParallel(myCluster)
+```
+
+If you're running this locally, you can check your Monitor App to see that new instances of R were launched in your computer.
+
+3) And now we're ready to use our cluster! We only have to change `%do%` to `%dopar%`
+
+```{r, eval=FALSE}
+output <- foreach(i = 'some object to iterate over', 'options') %dopar% {some r code}
+```
+
+For example:
+
+```{r}
+result <- foreach(x = c(4,9,16), .combine = 'c') %dopar% sqrt(x)
+```
+
+4) Always remember to stop the cluster when you have finished!
+
+```{r}
+stopCluster(myCluster)
+```
+
+Let's run some tests to see the improvement in performance. We'll be using bootstrapping to compute the confidence intervals for a regression coefficient.
+
+```{r}
+d <- read.csv("/Users/ctwo/Desktop/R/UK-tweets.csv", stringsAsFactors=FALSE)
+nsims <- 500
+# without parallelization
+system.time({
+  #combine = 'c', a pack of numerical
+  r <- foreach(1:nsims, .combine='c') %do% {
+  smp <- sample(1:nrow(d), replace=TRUE)
+  reg <- lm(log(favourites_count+1) ~ 
+              communication + followers_count, data=d[smp,])
+  coef(reg)[2]
+}})
+quantile(r, probs=c(.025, 0.975))
+# with parallelization
+myCluster <- makeCluster(3, type = "FORK") # why "FORK"?
+registerDoParallel(myCluster)
+system.time({
+r <- foreach(1:nsims, .combine='c') %dopar% {
+  smp <- sample(1:nrow(d), replace=TRUE)
+  reg <- lm(log(favourites_count+1) ~ communication + followers_count, data=d[smp,])
+  coef(reg)[2]
+}})
+stopCluster(myCluster)
+quantile(r, probs=c(.025, 0.975))
+```
+
+Why isn't the total running time 1/ncores the original running time?
+
+Let's run another example: here we run through all the inaugural presidential speeches in the US and identify the most unique words for each president (something to which we will come back later in the course).
+
+```{r}
+library(quanteda)
+library(readtext)
+inaug <- corpus(readtext("inaugural/*"))
+inaugdfm <- dfm(inaug, remove_punct=TRUE)
+# regular loop
+init <- Sys.time()
+speeches <- docnames(inaug)
+words <- list()
+for (sp in speeches){
+  words[[sp]] <- head(textstat_keyness(inaugdfm, target=sp)$feature, n=10)
+}
+Sys.time() - init
+# parallelized loop
+myCluster <- makeCluster(3, type = "FORK") # why "FORK"?
+registerDoParallel(myCluster)
+init <- Sys.time()
+words <- foreach(sp = speeches) %dopar% {
+  head(textstat_keyness(inaugdfm, target=sp)$feature, n=10)
+}
+Sys.time() - init
+stopCluster(myCluster)
+```

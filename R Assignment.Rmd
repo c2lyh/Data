@@ -1,0 +1,34 @@
+---
+title: "INF143 R assignment"
+author: "YuHeng Li"
+Date: "June 6 2019"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+```
+##btc.CSV file contains bitcoin daily price from Okcoin(crypto-exchange)
+
+```{r setup, include=FALSE}
+#Import US quarterly GDP dataframe 
+btc <- read.csv(file ='/Users/ctwo/Desktop/btc.csv')
+#this csv has way too many data, data clean is necessary for this assignment
+btc <- btc[-c(2,7,8)]
+#drop unrelavent columns
+#create a smaller dataset for better visualization
+btc <- btc[c(1:10),c(1:5)] 
+#change col names
+names(btc)[1]<-"date"
+names(btc)[2:5]<-"price"
+#modify dataframe for boxplot
+newdf <- melt(setDT(btc), id.vars = c("date"), variable.name = "price")
+#Change factor col to int
+newdf$date <-  as.integer(newdf$date)
+#Finally boxplot
+boxplot(value~date,data = newdf,main="Bitcoin Price of 10 Days",xlab="Exchange's timestamp",ylab="Price",col="burlywood3",border="brown4")
+
+
+```
+

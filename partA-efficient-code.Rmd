@@ -1,0 +1,277 @@
+---
+title: 'Part A: Writing more efficient code'
+author: "Pablo Barbera"
+---
+
+The purpose of this set of exercises is to practice writing more efficient code. You will be presented with a series of code chunks that I'm honestly ashamed to have written! Using a combination of vectorized functions and more efficient handling of memory, try to see how fast you can make it run. Be creative! 
+
+You will be marked based on how much your code is able to reduce the running time of my code, while still being easy to read.
+
+Here's the dataset we'll be using for this challenge -- a random sample of 10,000 tweets related to the 2014 EP elections in the UK. To make it a bit more challenging, we'll multiply the size of the dataset by 5.
+
+```{r}
+d <- read.csv("/Users/ctwo/Desktop/R/UK-tweets.csv", stringsAsFactors=F)
+d <- rbind(d, d, d, d, d)
+d <- na.omit(d)
+```
+
+
+## 1. Count how many tweets are classified as impolite:
+
+```{r}
+func1 <- function(){
+  
+  count <- 0
+  
+  for (i in 1:nrow(d)){
+    if (d$polite[i]=="impolite"){
+      count <- count + 1
+    }
+  }
+  return(count)
+}
+
+system.time(func1())
+
+```
+
+Your solution here:
+
+```{r}
+func2 <- function(){
+  return(length(which(d$polite == "impolite")))
+}
+system.time(func2())
+```
+
+## 2. Count what proportion of tweets are classified as engaging:
+
+```{r}
+func1 <- function(){
+  
+  engaging.count <- 0
+  for (i in 1:nrow(d)){
+    if (d$communication[i]=="engaging"){
+      engaging.count <- engaging.count + 1
+    }
+  }
+  total.tweets <- 0
+  for (i in 1:nrow(d)){
+    total.tweets <- total.tweets + 1
+  }
+  prop <- engaging.count/total.tweets
+  return(prop)
+}
+
+system.time(func1())
+
+```
+
+Your solution here:
+
+```{r}
+func2 <- function(){
+  return((length(which(d$communication=="engaging")))/nrow(d))
+}
+system.time(func2())
+```
+
+## 3. Count how many tweets mention Merkel:
+
+```{r}
+func1 <- function(){
+  brexit_tweets <- c()
+  for (i in 1:nrow(d)){
+    if (grepl("brexit", d$text[i], ignore.case=TRUE)==TRUE){
+      brexit_tweets <- c(brexit_tweets, i)
+    }
+  }
+  return(length(brexit_tweets))
+}
+system.time(count <- func1())
+```
+
+Your solution here:
+
+```{r}
+func2 <- function(){
+  return(length(grep("brexit",d$text,ignore.case = TRUE)))
+}
+system.time(func2())
+```
+
+## 4. Take a random sample of 200 tweets that are classified as "impolite"
+
+```{r}
+func1 <- function(){
+  
+  # sample random uniform number
+  d$random <- runif(nrow(d))
+  # sort by this random number
+  dd <- d[order(d$random),]
+  # loop over rows using 'while'
+  smp <- data.frame()
+  i <- 1
+  while (nrow(smp)<200){
+    if (d$polite[i]=="impolite"){
+      smp <- rbind(smp, d[i,])
+    }
+    i <- i + 1
+  }
+  return(smp)
+
+}
+
+system.time(func1())
+
+```
+
+Your solution here:
+
+```{r}
+func2 <- function(){
+  d$random <- runif(nrow(d))
+  dd <- d[order(d$random),]
+  smp <- data.frame()
+  smp <- rbind(smp,d[(which(d$polite == "impolite"))[0:200],])
+  return (smp)
+}
+system.time(func2())
+```
+
+
+
+
+
+# 5. Compute the average number of followers for tweets that are impolite and polite
+
+```{r}
+func1 <- function(){
+  # average number of followers for impolite tweets
+  #append the follower,
+  impolite.follower.counts <- c()
+  for (i in 1:nrow(d)){
+    if (d$polite[i]=="impolite"){
+      impolite.follower.counts <- c(impolite.follower.counts, d$followers_count[i])
+    }
+  }
+  #add up
+  impolite.follower.sum <- 0
+  for (i in 1:length(impolite.follower.counts)){
+    impolite.follower.sum <- impolite.follower.sum + impolite.follower.counts[i]
+  }
+  #calculate total
+  impolite.tweets.total <- 0
+  for (i in 1:nrow(d)){
+    if (d$polite[i]=="impolite"){
+      impolite.tweets.total <- impolite.tweets.total + 1
+    }
+  }
+  impolite.follower.mean <- impolite.follower.sum / impolite.tweets.total
+  
+  
+  
+  # average number of followers for polite tweets
+  polite.follower.counts <- c()
+  for (i in 1:nrow(d)){
+    if (d$polite[i]=="polite"){
+      polite.follower.counts <- c(polite.follower.counts, d$followers_count[i])
+    }
+  }
+  polite.follower.sum <- 0
+  for (i in 1:length(polite.follower.counts)){
+    polite.follower.sum <- polite.follower.sum + polite.follower.counts[i]
+  }
+  polite.tweets.total <- 0
+  for (i in 1:nrow(d)){
+    if (d$polite[i]=="polite"){
+      polite.tweets.total <- polite.tweets.total + 1
+    }
+  }
+  polite.follower.mean <- polite.follower.sum / polite.tweets.total  
+
+  return(c(impolite.follower.mean, polite.follower.mean,
+           polite.follower.sum,polite.tweets.total))
+  # 2473.324 108165.132   1095.000  118440820(followers)
+
+}
+
+system.time(func1())
+
+```
+
+Your solution here:
+
+```{r}
+func2 <- function(){
+  imp.counter <- 0
+  imp.followers <- 0
+  pol.followers <- 0
+  
+  for (i in (1:nrow(d))){
+    if(d$polite[i] == "impolite"){#if ture -> impolite
+      imp.counter <- imp.counter +1
+      imp.followers <- imp.followers + d$followers_count[i]
+    }
+    else{
+      pol.followers <- pol.followers + d$followers_count[i]
+    }
+  }
+  return(c(imp.followers/imp.counter, pol.followers/(nrow(d)-imp.counter)))
+}
+
+system.time(func2())
+```
+
+# 6. Compute the proportion of tweets mentioning Merkel, Farage, Labour, Europe or Coburn (ignoring capitalization) that are impolite.
+
+```{r}
+func1 <- function(){
+  # creating new DF with tweets that mention one of the keywords
+  df <- data.frame()
+  keywords <- c("Brexit", "farage", "labour", "europe", "coburn")
+  for (word in keywords){
+    matches <- grep(word, d$text, ignore.case=TRUE)
+    df <- rbind(df, d[matches,])
+  }#df6675
+  df <- df[!duplicated(df$text),]
+  
+  # counting proportion of impolite tweets
+  impolite.count <- 0
+  for (i in 1:nrow(d)){
+    if (d$polite[i]=="impolite"){
+      impolite.count <- impolite.count + 1
+    }
+  }
+  #impolite 1095
+  prop <- impolite.count/nrow(df)
+  return(prop)
+
+}#0.8809332 #0.662 user
+
+system.time(func1())
+
+```
+
+Your solution here:
+
+```{r}
+func2 <- function(){
+  keywords <- c("Brexit", "farage", "labour", "europe", "coburn")
+  df <- data.frame()
+  df.list <-list()
+  
+  for (i in 1:(length(keywords))){
+    match_rows <- grep(keywords[i],d$text,ignore.case = TRUE)
+    df.list[[i]] <- data.frame(d[match_rows,])
+  }
+  df<- do.call(rbind,df.list)#6675
+  df <- df[!duplicated(df$text),]#1243
+  
+  return( (length(which(d$polite=="impolite")))/nrow(df))
+}
+
+
+system.time(func2())
+```
+

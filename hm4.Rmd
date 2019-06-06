@@ -1,0 +1,59 @@
+---
+title: "PotentialGDPvsRealGDP analyze"
+output: html_document
+---
+
+Q1:
+  (a):total 33 peaks and 33 contractions
+  (b):Starting from October 1873 with 65 months
+  (c):Starting from January 1980 with 6 months
+  (d):Starting from March   2001 with 120 months
+  (e):In January 1913 and January 1981 with 12 months
+  (f):Yes, the average duration of economic contractions decreased.And the average duration of economic expansion increased.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+#Q2(a):
+GDPC1 <- read.csv(file ='/Users/ctwo/Desktop/GDPC1.csv')
+GDPPOT <- read.csv(file='/Users/ctwo/Desktop/GDPPOT.csv')
+plot(GDPC1$DATE,GDPC1$GDPC1,type = 'l',col="black",xlab = 'Date',ylab = 'RealGDP&PotentialGDP',sub = 'RealGDP=Black,PotentialGDP=Red')
+lines(GDPPOT$DATE,GDPPOT$GDPPOT,type = 'l',col="red")
+
+#finding intersection
+compare <- data.frame(GDPPOT$GDPPOT,GDPC1$GDPC1)
+above<- c(GDPPOT$GDPPOT - GDPC1$GDPC1)
+
+
+```
+(b)In january 2019, the RealGDP is greater than the potential GDP
+18907.517(RealGDP) - 18753.6(PotentialGDP) = 153.917
+(c)The longest period PotentialGDP is higher than RealGDP is between 1980-04-01 and 1996-01-01
+(d)Because the Potential GDP is calculated by (natural rate of employment/actual rate of employment)*Actual GDP. And rate of employment is determined by the level of investment. Therefore, as the decrease of investment during recession, the job posision decreases and thus it is hard for people to find a job.
+(e)did
+(f)In 1966-01-01 output gap the farthest above zero with 5.81057459.
+(g)In 1982-10-01 output gap the farthest below zero with -7.42634931.
+(h)the standard deviation of output gap is 2.383801. Thus with two standard deviation account for about 95%.
+
+What is the standard deviation of the output gap of the US? What does this mean?
+
+
+```{r setup, include=FALSE}
+#Calculate Output gap = 100 x (actualGDP-potentialGDP)/potentialGDP
+compare$outputgap <- with(compare, 100*((GDPC1.GDPC1-GDPPOT.GDPPOT)/GDPPOT.GDPPOT))
+e <- data.frame(GDPC1$DATE,compare$outputgap)
+
+#(e)
+plot(e$GDPC1.DATE,e$compare.outputgap,type="l",col="red",xlab = 'Date',ylab = 'OutputGap',main = 'OutputGap')
+lines(e$GDPC1.DATE,e$compare.outputgap,type = 'l',col="red")
+
+#(h) calculate the standard deviation of output gap
+sapply(e, sd, na.rm = TRUE)
+#or
+colSds(as.matrix(e$compare.outputgap), na.rm=TRUE)
+
+
+
+```

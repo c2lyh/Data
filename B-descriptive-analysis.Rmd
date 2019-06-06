@@ -1,0 +1,40 @@
+---
+title: "Final exam part B: descriptive analysis"
+author: Pablo Barbera
+---
+
+The goal of this second part of the assignment is to analyze the datasets you just created in order to answer a set of descriptive questions. Your answer to the questions will offer important context towards the overall research question:  __Why is there so much negativity on Facebook comments about politics?__
+
+For each item below, you should write code with any statistical or graphical analysis that you consider appropriate, and then answer the question.
+
+1. First of all, how much negativity is there on the comments of pages by U.S. legislators? In other words, what proportion of comments are negative?
+
+```{r}
+
+```
+
+2. How much variation is there in the level of negativity that legislators see on their Facebook pages? Which are the legislators with the highest and lowest proportion of negative comments?
+
+```{r}
+
+```
+
+3. How did negativity evolve over time during the period of analysis? Do you identify any particular days or periods during which negativity spiked? Can you explain why?
+
+```{r}
+
+```
+
+4. Are there any other variables in the dataset that could help you measure negativity? If so, do you find similar results to questions 2 and 3 when you use that other signal?
+
+```{r}
+
+```
+
+5. (Note: this question is hard!) What proportion of comment threads have at least one negative comment?
+
+```{r}
+
+```
+
+

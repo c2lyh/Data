@@ -1,0 +1,51 @@
+---
+title: "political scratch"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Notes for chunk one:
+  Scratch data from "everypolitician" websites to get most recent politicians into databases.
+
+```{r}
+library('rvest')
+
+
+webpage <- read_html("https://everypolitician.org/united-states-of-america/senate/term-table/114.html")
+
+web.info <- sapply(strsplit(html_text(webpage),"\n"), function(x){
+  gsub("[[:space:]]", "", x)
+})
+
+web.info <- web.info[!web.info==""]
+web.info <- web.info[-c(1:79)]
+name <- web.info[which(web.info=="Gender")-2]
+bioguide <- web.info[which(web.info=="bioguide")+1]
+birth  <- web.info[which(web.info=="Born")+1]
+
+birth <- as.Date(birth)
+ages <- 2019-year(birth)
+table4 <- cbind(bioguide,ages)
+```
+Notes:
+  just get some statistical summary
+```{r}
+dim(table1)
+dim(table2)
+dim(table3)
+
+
+table1$nominate_dim1 <- as.factor(table1$nominate_dim1)
+table1$district_code <- as.factor(table1$district_code)
+summary(table1)
+
+summary(table2)
+
+summary(table3)
+```
+
+Notes:
+  Scratch data from "everypolitician" websites to get most recent politicians into databases.

@@ -1,0 +1,30 @@
+---
+title: '163'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r cars}
+df <- read.csv(file="/Users/ctwo/Desktop/163/multiTimeline.csv",header = TRUE)
+
+plot(df$X2018.05.06,df$X94,type = "b",col = "red", xlab = "Time", ylab = "Topic Index", 
+   main = "Google Trend about ANTrepreneur")
+
+
+
+
+
+plot(df$X94,type = "l",col = "red", xlab = "2018-05-06 ,2018-05-20 ,2018-06-10......................................2019-04-07, 2019-04-28", ylab = "Topic Index", 
+   main = "Google Trend of word 'ANTrepreneur' ")
+
+```
+
+
+```{r pressure, echo=FALSE}
+
+```

@@ -1,0 +1,237 @@
+---
+title: 'Part B: Parallel computing'
+author: "Pablo Barbera"
+---
+
+In this second part of the problem set you will practice writing code that can be parallelized. 
+
+We'll start by using statistical simulation to solve the "birthday problem": given the number of people in this room, what is the probability that two people have the same birthday?
+
+Here's the code to run this simulation using a standard loop in R:
+
+```{r}
+system.time({
+# monte carlo simulation
+k <- 15 # number of people in this room
+sims <- 10000 # number of simulations 
+duplicates <- rep(NA, sims) # vector with results
+for (i in 1:sims) {
+  days <- sample(1:365, k, replace = TRUE)
+  days.unique <- unique(days) # unique birthdays
+  ## if there are duplicates, the number of unique birthdays 
+  ## will be less than the number of birthdays, which is `k'
+  ## so here we say TRUE if there are 2+ people with same birthday
+  duplicates[i] <- length(days.unique) < k
+
+}
+})
+#having 10000 times of test, each test with 15 ppl and get the final mean of true/false 1/0
+
+## fraction of trials where at least two bdays are the same
+mean(duplicates)
+#0.2568
+```
+
+1. Rewrite this loop using `%do%` from the `foreach` package. Make sure you use the correct function to combine. Does the running time increase or decrease? Why?
+
+```{r}
+library(foreach)
+system.time({
+duplicates <- rep(NA,10000)
+process <- function(x){
+  days<- sample(1:365,15,replace= TRUE)
+  days.unique <- unique(days)
+  x <- length(days.unique)<15
+  return(x)
+}
+
+resultdo <- foreach(x=duplicates,.combine='c') %do% process(x)
+})
+
+mean(resultdo)
+
+
+#***the "foreach" method without parallel is approximately 10 times slower than "for" loop
+
+#***According to article of "Foreach vignette" that the foreach method differs from a for loop in that its return is a list of values, whereas a for loop has no value and uses side effects to convey its result.
+
+```
+
+2. Now set up a cluster and parallelize the loop using `%dopar%`. Does the running time increase or decrease? What does it tell you about when it makes sense to parallelize?
+
+```{r}
+#initia clusters
+library(doParallel)
+
+myCluster <- makeCluster(3, type = "FORK")
+registerDoParallel(myCluster)
+
+system.time({
+duplicates <- rep(NA,10000)
+processpar <- function(x){
+  days<- sample(1:365,15,replace= TRUE)
+  days.unique <- unique(days)
+  x <- length(days.unique)<15
+  return(x)
+}
+
+resultpar <- foreach(x=duplicates,.combine='c') %dopar% processpar(x)
+})
+stopCluster(myCluster)
+mean(resultpar)
+
+
+#after using parallel/cluster method, I realized it's largely slower than the foreach method not even mention the for loop.
+#However, after I did some experiment that scale up the sample size to 100 times larger, the parallel method begins to work faster and as the sample size larger the parallel method is far more faster than any other methods.
+```
+
+3. Now assume there's 100,000 million students in the class (one can dream...). Try re-running the previous code, both without and with parallelization. We already know the answer for the birthday problem with this sample size (more than 365 students, so the probability will of course be 1), but let's try it anyway. What happens now with the running time? Why?
+
+```{r}
+#**********************foreach without parallel
+system.time({
+duplicates<-rep(NA,10000)
+process <- function(x){
+  days<- sample(1:365,100000,replace= TRUE)
+  days.unique <- unique(days)
+  x <- length(days.unique)<15
+  return(x)
+}
+resultdo <- foreach(x=duplicates,.combine='c') %do% process(x)
+})
+mean(resultdo)
+#**********************foreach with parallel
+myCluster <- makeCluster(3, type = "FORK")
+registerDoParallel(myCluster)
+system.time({
+duplicates <- rep(NA,10000)
+processpar <- function(x){
+  days<- sample(1:365,100000,replace= TRUE)
+  days.unique <- unique(days)
+  x <- length(days.unique)<15
+  return(x)
+}
+resultpar <- foreach(x=duplicates,.combine='c') %dopar% processpar(x)
+})
+stopCluster(myCluster)
+mean(resultpar)
+
+
+# it is clearly that the parallel method is highly efficient when doing large scale data process eg million level dataset. To sum, it seems like parallel computing is not suitable for small scale dataset since it somehow needs certain time to initialize the workflow.
+```
+
+4. We'll now extend one of the examples in the lecture materials and learn how to compute a confidence interval for the mean of a variable using bootstrapping. The first loop below shows how to do this in base R: take a random sample (with replacement) of the same size as the variable, compute the mean, and then replicate this a number of times.
+
+Replicate this loop using foreach, first using `%do%` (without parallelization) and then with `%dopar%` (with parallelization). Which one is faster? Why do you think that's the case?
+
+
+```{r}
+d <- read.csv("/Users/ctwo/Desktop/R/UK-tweets.csv", stringsAsFactors=F)
+d <- rbind(d, d, d, d, d)
+d <- na.omit(d)
+nsims <- 1000
+
+system.time({
+means <- rep(NA, nsims)
+for (i in 1:nsims){
+  smp <- sample(d$retweet_count, size=nrow(d), replace=TRUE)
+  means[i] <- mean(smp)
+}
+})
+quantile(means, probs=c(0.025, 0.975))
+#means numerica means[1]numeric
+
+
+#########################   %do%method without parallel computing
+system.time({
+means <- rep(NA, nsims)
+fun1 <- function(x){
+  smp <- sample(d$retweet_count,size = nrow(d),replace=TRUE)
+  return(mean(smp))
+}
+resultpar <- foreach(x=means,.combine='c') %do% fun1(x)
+})
+quantile(resultpar, probs=c(0.025, 0.975))
+
+
+#######################    %dopar%method  with parallel computing
+myCluster <- makeCluster(3, type = "FORK")
+registerDoParallel(myCluster)
+system.time({
+means <- rep(NA,nsims)
+fun2 <- function(x){
+  smp <- sample(d$retweet_count,size = nrow(d),replace=TRUE)
+  return(mean(smp))
+}
+resultpar <- foreach(x=means,.combine='c') %dopar% fun2(x)
+})
+quantile(resultpar, probs=c(0.025, 0.975))
+stopCluster(myCluster)
+
+
+# Conclusion:
+# It is obviously that parallel computing is faster than other two method when dataset is large scale since dopar method is design to parallel computing when the methods are all the same while procesing the large dataset.
+```
+
+
+5. Finally, we will apply bootstrapping to a slightly more complicated problem. We are going to test the hypothesis (and compute the uncertainty of our results) that negative tweets tend to receive more likes.The code below implements this sentiment analysis method. Then, write your own code to replicate 
+
+this method 100 times, each of those times with a different random sample (with replacement; of the same size) of the negative words.
+
+Do it using a loop in base R and 
+
+then using parallelization with `%dopar`. Which one is faster? Why?
+
+
+```{r results='hide',message=FALSE,warning = FALSE}
+#initial libraries
+library(quanteda)
+
+
+# loading tweets
+d <- read.csv("/Users/ctwo/Desktop/R/UK-tweets.csv", stringsAsFactors=F)
+# loading lexicon of negative words (from Neal Caren)
+lexicon <- read.csv("/Users/ctwo/Desktop/R/lexicon.csv", stringsAsFactors=F)
+neg.words <- lexicon$word[lexicon$polarity=="negative"]
+
+# a look at a random sample of negative words
+sample(neg.words, 10)
+# first we construct a dictionary object
+mydict <- dictionary(list(negative = neg.words))
+# apply it to our corpus and add it as a new variable
+d$negative_count <- as.numeric(dfm(corpus(d$text), dictionary = mydict))
+a <- summary(lm(log(favourites_count+1) ~ negative_count, data=d))
+
+
+#using for loop method to initial bootstrapping hypothesis test
+system.time({
+for (i in 1:100){
+  negtest <- sample(neg.words,size = 10,replace = TRUE)
+  fordict <- dictionary(list(negative = negtest))
+  d$negative_count <- as.numeric(dfm(corpus(d$text), dictionary = mydict))
+  summary(lm(log(favourites_count+1) ~ negative_count, data=d))
+}
+})
+
+
+#using parallel method to initial bootstrapping test hypothesis test
+myCluster <- makeCluster(3, type = "FORK")
+registerDoParallel(myCluster)
+system.time({
+stats <- rep(NA,100)
+dobootstrap <- function(x){
+  negtest <- sample(neg.words,size = 10,replace = TRUE)
+  fordict <- dictionary(list(negative = negtest))
+  d$negative_count <- as.numeric(dfm(corpus(d$text), dictionary = mydict))
+  summary(lm(log(favourites_count+1) ~ negative_count, data=d))
+}
+resultpar <- foreach(x=stats,.combine='c') %dopar% dobootstrap(x)
+})
+
+stopCluster(myCluster)
+
+
+#conclusion:
+#The parallel computing is much more faster when the processed data scale is large and more efficient than the for loop method
+
+```

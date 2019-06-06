@@ -1,6 +1,6 @@
 ---
 title: 'Part A: Writing more efficient code'
-author: "Pablo Barbera"
+author: ""
 ---
 
 The purpose of this set of exercises is to practice writing more efficient code. You will be presented with a series of code chunks that I'm honestly ashamed to have written! Using a combination of vectorized functions and more efficient handling of memory, try to see how fast you can make it run. Be creative! 
